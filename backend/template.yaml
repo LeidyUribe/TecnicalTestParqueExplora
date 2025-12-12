@@ -1,0 +1,189 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless API for Ticket Management
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: nodejs20.x
+    Environment:
+      Variables:
+        TICKETS_TABLE_NAME: !Ref TicketsTable
+
+Resources:
+  ##################################################
+  # API Gateway REST API
+  ##################################################
+  TicketsApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Name: TicketsApi
+      Auth:
+        ApiKeyRequired: true
+      Cors:
+        AllowMethods: "'GET,POST,PATCH,OPTIONS'"
+        AllowHeaders: "'Content-Type,x-api-key'"
+        AllowOrigin: "'*'"
+        AllowCredentials: false
+
+  ##################################################
+  # API Key
+  ##################################################
+  TicketsApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: !Sub "TicketsApiKey-${AWS::StackName}"
+      Enabled: true
+
+  ##################################################
+  # Usage Plan
+  ##################################################
+  TicketsUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      UsagePlanName: !Sub "TicketsUsagePlan-${AWS::StackName}"
+      ApiStages:
+        - ApiId: !Ref TicketsApi
+          Stage: prod
+      Throttle:
+        BurstLimit: 200
+        RateLimit: 100
+      Quota:
+        Limit: 10000
+        Period: DAY
+
+  ##################################################
+  # Usage Plan Key Association
+  ##################################################
+  TicketsUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref TicketsApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref TicketsUsagePlan
+
+  ##################################################
+  # DynamoDB Table
+  ##################################################
+  TicketsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "tickets-${AWS::StackName}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  ##################################################
+  # Lambda: OPTIONS Handler (CORS Preflight)
+  ##################################################
+  OptionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "Options-${AWS::StackName}"
+      CodeUri: dist/
+      Handler: infrastructure/http/handlers/optionsHandler.handler
+      Events:
+        OptionsTickets:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TicketsApi
+            Path: /tickets
+            Method: OPTIONS
+            Auth:
+              ApiKeyRequired: false
+        OptionsTicketStatus:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TicketsApi
+            Path: /tickets/{id}/status
+            Method: OPTIONS
+            Auth:
+              ApiKeyRequired: false
+
+  ##################################################
+  # Lambda: Create Ticket
+  ##################################################
+  CreateTicketFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "CreateTicket-${AWS::StackName}"
+      CodeUri: dist/
+      Handler: infrastructure/http/handlers/createTicketHandler.handler
+      Events:
+        CreateTicket:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TicketsApi
+            Path: /tickets
+            Method: POST
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TicketsTable
+
+  ##################################################
+  # Lambda: List Tickets
+  ##################################################
+  ListTicketsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "ListTickets-${AWS::StackName}"
+      CodeUri: dist/
+      Handler: infrastructure/http/handlers/getTicketsHandler.handler
+      Events:
+        ListTickets:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TicketsApi
+            Path: /tickets
+            Method: GET
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref TicketsTable
+
+  ##################################################
+  # Lambda: Update Ticket Status
+  ##################################################
+  UpdateStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "UpdateTicketStatus-${AWS::StackName}"
+      CodeUri: dist/
+      Handler: infrastructure/http/handlers/updateTicketStatusHandler.handler
+      Events:
+        UpdateStatus:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TicketsApi
+            Path: /tickets/{id}/status
+            Method: PATCH
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TicketsTable
+
+Outputs:
+  ApiUrl:
+    Description: "Invoke URL of Tickets API"
+    Value: !Sub "https://${TicketsApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  
+  ApiKeyId:
+    Description: "API Key ID"
+    Value: !Ref TicketsApiKey
+  
+  ApiKeyInfo:
+    Description: "To get the API Key value, use AWS CLI with the ApiKeyId output"
+    Value: "Use: aws apigateway get-api-key --api-key <ApiKeyId> --include-value --query value --output text"
