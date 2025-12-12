@@ -1,0 +1,14 @@
+node_modules/
+.aws-sam/
+*.tsbuildinfo
+.env
+.env.local
+*.log
+coverage/
+.vscode/
+.idea/
+
+
+
+
+
