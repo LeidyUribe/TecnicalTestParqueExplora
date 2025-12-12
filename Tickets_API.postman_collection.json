@@ -1,0 +1,165 @@
+{
+	"info": {
+		"_postman_id": "tickets-api-collection",
+		"name": "Tickets API",
+		"description": "Colección de endpoints para el Portal de Seguimiento de Incidencias",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Crear Ticket",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "x-api-key",
+						"value": "{{api_key}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"title\": \"Error en el sistema\",\n  \"description\": \"No puedo acceder a mi cuenta de usuario\",\n  \"priority\": \"HIGH\",\n  \"createdBy\": \"usuario@example.com\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{api_url}}/tickets",
+					"host": [
+						"{{api_url}}"
+					],
+					"path": [
+						"tickets"
+					]
+				},
+				"description": "Crea un nuevo ticket de incidencia"
+			},
+			"response": []
+		},
+		{
+			"name": "Listar Todos los Tickets",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{api_key}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{api_url}}/tickets",
+					"host": [
+						"{{api_url}}"
+					],
+					"path": [
+						"tickets"
+					]
+				},
+				"description": "Obtiene todos los tickets sin filtro"
+			},
+			"response": []
+		},
+		{
+			"name": "Listar Tickets por Estado",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{api_key}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{api_url}}/tickets?status=OPEN",
+					"host": [
+						"{{api_url}}"
+					],
+					"path": [
+						"tickets"
+					],
+					"query": [
+						{
+							"key": "status",
+							"value": "OPEN",
+							"description": "Estado del ticket: OPEN, IN_PROGRESS, RESOLVED, CLOSED"
+						}
+					]
+				},
+				"description": "Obtiene tickets filtrados por estado"
+			},
+			"response": []
+		},
+		{
+			"name": "Actualizar Estado de Ticket",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "x-api-key",
+						"value": "{{api_key}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"status\": \"IN_PROGRESS\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{api_url}}/tickets/:id/status",
+					"host": [
+						"{{api_url}}"
+					],
+					"path": [
+						"tickets",
+						":id",
+						"status"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "ticket-id-here",
+							"description": "ID del ticket a actualizar"
+						}
+					]
+				},
+				"description": "Actualiza el estado de un ticket específico"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "api_url",
+			"value": "https://your-api-id.execute-api.us-east-1.amazonaws.com/prod",
+			"type": "string"
+		},
+		{
+			"key": "api_key",
+			"value": "your-api-key-here",
+			"type": "string"
+		}
+	]
+}
+
+
+
+
+
